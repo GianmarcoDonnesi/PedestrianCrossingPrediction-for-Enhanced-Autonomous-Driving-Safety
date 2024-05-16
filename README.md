@@ -1,1 +1,1 @@
-# Computer Vision Project
+# Simplified Pedestrian Crossing Prediction System
