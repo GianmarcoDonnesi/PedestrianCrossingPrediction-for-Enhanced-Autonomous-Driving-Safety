@@ -39,11 +39,11 @@ Run the scritp `preprocess_annotations.py` to preprocess the raw annotations tra
 Run the scritp `create_dataset.py` to prepare the dataset for training and evaluation by combining frames, keypoints, and annotations.
 
 ### Step 5: Model Definition
-The `model.py` script contains the definition of the model used for prediction.
+The `model.py` script contains the definition of the model used for prediction. <br>
 This script defines the `PedestrianCrossingPredictor` model, which uses a combination of *VGG19* for feature extraction and *LSTM* with attention mechanisms for sequence modeling.
 
 ### Step 6: Train and Evaluate the model
-Run the script `train_model.py` to train the model and save the state in the *trained_model.pth* file.
+Run the script `train_model.py` to train the model and save the state in the *trained_model.pth* file. <br>
 In the end use the script `evaluate_model.py` to evaluates the performance of the trained model on the validation dataset. It includes functionality for ablation studies to assess the impact of different types of input features on the model's performance.
 
 
