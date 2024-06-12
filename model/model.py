@@ -27,22 +27,24 @@ class SoftAttention(nn.Module):
         context = torch.sum(attn_weights * lstm_output, dim=1)  #[batch_size, hidden_dim]
         return context, attn_weights
 
+# Define the PedestrianCrossingPredictor class
 class PedestrianCrossingPredictor(nn.Module):
     def __init__(self):
         super(PedestrianCrossingPredictor, self).__init__()
         vgg19 = models.vgg19(pretrained=True)
 
-        # Extract features
+        # Extract VGG19 features
         self.vgg19_features = vgg19.features
         self.vgg19_avgpool = vgg19.avgpool
         self.avgpool = nn.AdaptiveAvgPool2d((7, 7))
         self.vgg19_classifier = nn.Sequential(*list(vgg19.classifier.children())[:-1])
 
-        # Freeze more layers
-        for param in self.vgg19_features[:36].parameters():  # Freeze more layers
+        # Freeze more layers of VGG19
+        for param in self.vgg19_features[:36].parameters():  
             param.requires_grad = False
-
-        self.lstm = nn.LSTM(input_size=4096, hidden_size=256, num_layers=1, batch_first=True)  # Reduced LSTM
+            
+        # Define LSTM with input size of 4096 and hidden size of 256    
+        self.lstm = nn.LSTM(input_size=4096, hidden_size=256, num_layers=1, batch_first=True)  
 
         # Attention module
         self.attention = SoftAttention(hidden_dim=256)
@@ -61,6 +63,7 @@ class PedestrianCrossingPredictor(nn.Module):
 
         self.fc3 = nn.Linear(64, 1)
 
+        # Goal module
         self.goal_module = nn.Sequential(
             nn.Linear(256, 128),
             nn.ReLU(),
@@ -69,7 +72,9 @@ class PedestrianCrossingPredictor(nn.Module):
             nn.Linear(128, 256),
             nn.ReLU()
         )
-        self.com_fc1 = nn.Linear(256 + 256 + 11, 256)  # Update the size to 256
+        
+        # Combined features layers
+        self.com_fc1 = nn.Linear(256 + 256 + 11, 256)  
         self.com_bn1 = nn.BatchNorm1d(256)
         self.com_d1 = nn.Dropout(0.5)
         self.com_fc2 = nn.Linear(256, 128)
@@ -77,7 +82,7 @@ class PedestrianCrossingPredictor(nn.Module):
         self.com_d2 = nn.Dropout(0.5)
         self.com_fc3 = nn.Linear(128, 1)
 
-    def forward(self, x, traffic_info, vehicle_info, appearance_info, attributes_info, future_steps=10):
+    def forward(self, x, keypoints, traffic_info, vehicle_info, appearance_info, attributes_info, future_steps=10):
         if x.dim() == 4:  # If the input has 4 dimensions, expand it to 5
             x = x.unsqueeze(1)  # Add a sequence length dimension
         batch_size, seq_len, c, h, w = x.size()
@@ -88,20 +93,27 @@ class PedestrianCrossingPredictor(nn.Module):
         c_out = self.vgg19_classifier(c_out)
         c_out = c_out.view(batch_size, seq_len, -1)
 
+        # Pass through LSTM
         lstm_out, _ = self.lstm(c_out)
 
         # Apply attention
         context, attn_weights = self.attention(lstm_out)
 
+        # Apply BatchNorm and Dropout
         context = self.bn1(context)
         context = self.d1(context)
+        
+        # Flatten keypoints
+        keypoints = keypoints.view(batch_size, -1)
 
-        additional_info = torch.cat([traffic_info, vehicle_info, appearance_info, attributes_info], dim=1)
+        # Concatenate additional information
+        additional_info = torch.cat([keypoints, traffic_info, vehicle_info, appearance_info, attributes_info], dim=1)
 
         goal_out = self.goal_module(context)
 
         combined = torch.cat((context, goal_out, additional_info), dim=1)
 
+        # Combine context, goal, and additional information
         combined = self.com_fc1(combined)
         combined = torch.relu(combined)
         combined = self.com_bn1(combined)
@@ -116,7 +128,7 @@ class PedestrianCrossingPredictor(nn.Module):
 
         return combined
 
-# Inizializza i pesi, il modello, la loss function, l'optimizer e lo scheduler
+# Initialize weights for the model
 def init_w(m):
     if isinstance(m, nn.Linear):
         nn.init.xavier_normal_(m.weight)
@@ -130,16 +142,18 @@ def init_w(m):
             elif 'bias' in name:
                 nn.init.constant_(param.data, 0)
 
+
 model = PedestrianCrossingPredictor()
 model.apply(init_w)
 
+# Define loss function
 criterion = nn.BCEWithLogitsLoss()
 
 optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
 scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size = 10, gamma = 0.1)
 
-# Salva il modello, la loss function e l'optimizer per uso successivo
-torch.save(model.state_dict(), '/content/drive/My Drive/CV_Project/model.pth')
-torch.save(optimizer.state_dict(), '/content/drive/My Drive/CV_Project/optimizer.pth')
+# Save the model and optimizer states
+torch.save(model.state_dict(), './model/model.pth')
+torch.save(optimizer.state_dict(), './model/optimizer.pth')
 
 print("Model saved")
