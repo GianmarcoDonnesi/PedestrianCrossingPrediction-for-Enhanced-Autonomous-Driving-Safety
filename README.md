@@ -9,7 +9,9 @@ This project focuses on predicting pedestrian crossing behavior using the *JAAD 
 #### Authors
 **Gianmarco Donnesi**
 Matr. n. 2152311
+
 &nbsp;
+
 **Michael Corelli**
 Matr. n. 1938627
 
