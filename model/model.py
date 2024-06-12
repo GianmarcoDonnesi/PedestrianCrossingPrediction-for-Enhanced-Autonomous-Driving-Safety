@@ -3,10 +3,12 @@ import torch
 import torch.nn as nn
 import torchvision.models as models
 
+# Attention mechanism
 class SoftAttention(nn.Module):
     def __init__(self, hidden_dim):
         super(SoftAttention, self).__init__()
         self.hidden_dim = hidden_dim
+        # Attention network: 2 linear layers + ReLU activation
         self.attention = nn.Sequential(
             nn.Linear(hidden_dim, hidden_dim),
             nn.ReLU(inplace=True),
@@ -15,9 +17,14 @@ class SoftAttention(nn.Module):
 
     def forward(self, lstm_output):
         # lstm_output: [batch_size, seq_len, hidden_dim]
-        attn_weights = self.attention(lstm_output)  # [batch_size, seq_len, 1]
-        attn_weights = torch.softmax(attn_weights, dim=1)  # [batch_size, seq_len, 1]
-        context = torch.sum(attn_weights * lstm_output, dim=1)  # [batch_size, hidden_dim]
+        # Calculate attention weights
+        attn_weights = self.attention(lstm_output)  #[batch_size, seq_len, 1]
+        
+        # Normalize the attention weights using softmax
+        attn_weights = torch.softmax(attn_weights, dim=1)  #[batch_size, seq_len, 1]
+        
+        # Compute the context vector as a weighted sum of LSTM outputs
+        context = torch.sum(attn_weights * lstm_output, dim=1)  #[batch_size, hidden_dim]
         return context, attn_weights
 
 class PedestrianCrossingPredictor(nn.Module):

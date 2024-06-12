@@ -3,7 +3,7 @@ import requests
 from zipfile import ZipFile
 
 # Change directory to JAAD dataset location
-jaad_dir = '/content/drive/My Drive/CV_Project/JAAD_dataset'
+jaad_dir = './JAAD_dataset'
 os.chdir(jaad_dir)
 
 # Download JAAD clips

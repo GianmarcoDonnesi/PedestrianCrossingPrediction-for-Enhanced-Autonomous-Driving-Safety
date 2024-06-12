@@ -4,12 +4,10 @@ import xml.etree.ElementTree as ET
 import mediapipe as mp
 import numpy as np
 from tqdm import tqdm
-import warnings
-
 
 # Path to JAAD dataset and output directory
-jaad_path = '/content/drive/My Drive/CV_Project/JAAD_dataset/JAAD_clips'
-annotation_dir = '/content/drive/My Drive/CV_Project/JAAD_dataset/annotations'
+jaad_path = './JAAD_dataset/JAAD_clips'
+annotation_dir = './JAAD_dataset/annotations'
 output_dir = os.path.join(jaad_path, 'frames_with_bboxes')
 pose_output_dir = os.path.join(jaad_path, 'pose_keypoints')
 os.makedirs(output_dir, exist_ok=True)
@@ -17,25 +15,14 @@ os.makedirs(pose_output_dir, exist_ok=True)
 
 # Initialize Mediapipe Pose
 mp_pose = mp.solutions.pose
-pose = mp_pose.Pose(static_image_mode = False, model_complexity = 2, enable_segmentation = False, min_detection_confidence = 0.4)
+pose = mp_pose.Pose(static_image_mode=False, model_complexity=2, enable_segmentation=False, min_detection_confidence=0.4)
 
-#
-def preprocess_frames(frame):
-    # Resize the frame
-    frame = cv2.resize(frame, (640, 480))
-
-    # Convert to grayscale and enhance contrast
-    grayscale = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-    clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize = (8, 8))
-    grayscale = clahe.apply(grayscale)
-
-    # Denoise
-    frame = cv2.fastNlMeansDenoisingColored(frame, None, 10, 10, 7, 21)
-
-    # Convert back to BGR
-    frame = cv2.cvtColor(grayscale, cv2.COLOR_GRAY2BGR)
-
-    return frame
+def draw_keypoints(image, keypoints):
+    for keypoint in keypoints:
+        x = int(keypoint[0] * image.shape[1])
+        y = int(keypoint[1] * image.shape[0])
+        cv2.circle(image, (x, y), 5, (0, 0, 255), -1)
+    return image
 
 
 def extract_and_save_frames_with_bboxes_and_pose_keypoints(video_path, annotation_path, video_output_dir, pose_output_dir):
@@ -61,9 +48,6 @@ def extract_and_save_frames_with_bboxes_and_pose_keypoints(video_path, annotatio
             if not ret:
                 break
 
-            # Preprocess
-            frame = preprocess_frames(frame)
-
             for track in root.findall('.//track'):
                 for box in track.findall('.//box'):
                     if int(box.get('frame')) == frame_id:
@@ -73,8 +57,8 @@ def extract_and_save_frames_with_bboxes_and_pose_keypoints(video_path, annotatio
                         ybr = int(float(box.get('ybr')))
                         cv2.rectangle(frame, (xtl, ytl), (xbr, ybr), (0, 255, 0), 2)
 
-            frame_filename = os.path.join(video_output_dir, f"{video_name}_frame_{frame_id:05d}.jpg")
-            cv2.imwrite(frame_filename, frame)
+            # Resize the frame
+            frame = cv2.resize(frame, (640, 480))
 
             # Extract Keypoints with Mediapipe
             r = pose.process(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
@@ -84,8 +68,17 @@ def extract_and_save_frames_with_bboxes_and_pose_keypoints(video_path, annotatio
                 for landmark in r.pose_landmarks.landmark:
                     keypoints.append([landmark.x, landmark.y, landmark.z])
                 keypoints = np.array(keypoints)
+                # Disegna i keypoints sull'immagine
+                frame_with_keypoints = draw_keypoints(frame, keypoints)
+                # Salva l'immagine con bounding boxes e keypoints
+                frame_filename = os.path.join(video_output_dir, f"{video_name}_frame_{frame_id:05d}.jpg")
+                cv2.imwrite(frame_filename, frame_with_keypoints)
             else:
-                # Create an empty array
+                # Salva l'immagine solo con bounding boxes
+                frame_filename = os.path.join(video_output_dir, f"{video_name}_frame_{frame_id:05d}.jpg")
+                cv2.imwrite(frame_filename, frame)
+
+                # Create an empty array for keypoints
                 keypoints = np.empty((0, 3))
 
             # Save keypoints as .npy file
@@ -97,10 +90,10 @@ def extract_and_save_frames_with_bboxes_and_pose_keypoints(video_path, annotatio
 
         cap.release()
 
-# Extract frames with bounding boxes and pose keypoints for the first 10 videos and annotation files
+# Extract frames with bounding boxes and pose keypoints for the first 100 videos and annotation files
 video_files = sorted([file for file in os.listdir(jaad_path) if file.endswith('.mp4')])
 
-for video_file in video_files[:346]:
+for video_file in video_files[:100]:
     video_path = os.path.join(jaad_path, video_file)
     annotation_file = video_file.replace('.mp4', '.xml')
     annotation_path = os.path.join(annotation_dir, annotation_file)
@@ -111,4 +104,4 @@ for video_file in video_files[:346]:
 
     extract_and_save_frames_with_bboxes_and_pose_keypoints(video_path, annotation_path, video_output_dir, video_pose_output_dir)
 
-print("\n Frame extraction with bounding boxes and pose keypoints complete!")
+print("\nFrame extraction with bounding boxes and pose keypoints complete!")

@@ -7,7 +7,7 @@ import numpy as np
 from torchvision import transforms
 from torch.utils.data import Dataset, DataLoader, ConcatDataset
 from create_dataset import PreprocessedDataset, collate_fn
-from model import PedestrianCrossingPredictor
+from model.model import PedestrianCrossingPredictor
 import os
 
 # Check if GPU is available

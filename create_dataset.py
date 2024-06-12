@@ -12,15 +12,17 @@ from multiprocessing import Value, cpu_count
 # Create a global counter for tracking progress
 counter = Value('i', 0)
 
+# Custom Dataset class for the JAAD dataset
 class JAADDataset(Dataset):
     def __init__(self, frames_dir, keypoints_dir, cache_dir, transform=None):
         self.frames_dir = frames_dir
         self.keypoints_dir = keypoints_dir
         self.cache_dir = cache_dir
         self.transform = transform
-        self.video_names = sorted(os.listdir(frames_dir))[:102]  # Consider only the first 102 videos
+        self.video_names = sorted(os.listdir(frames_dir))[:100]  
         self.data = []
 
+        # Load data for each video
         for video in self.video_names:
             video_id = video.split('_')[1]
             cache_file = os.path.join(cache_dir, f"video_{video_id}.pkl")
@@ -62,7 +64,7 @@ class JAADDataset(Dataset):
 
         return frame, keypoints, label, traffic_info, vehicle_info, appearance_info, attributes_info
 
-# Data augmentation
+# Data augmentation transformations
 transform = transforms.Compose([
     transforms.Resize((224, 224)),
     transforms.RandomHorizontalFlip(),
@@ -71,10 +73,10 @@ transform = transforms.Compose([
     transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
 ])
 
-# Create dataset and dataloader
-frames_dir = '/content/drive/My Drive/CV_Project/JAAD_dataset/JAAD_clips/frames_with_bboxes'
-keypoints_dir = '/content/drive/My Drive/CV_Project/JAAD_dataset/JAAD_clips/pose_keypoints'
-cache_dir = '/content/drive/My Drive/CV_Project/JAAD_dataset/cache'
+# Directories for frames, keypoints, and cache
+frames_dir = './JAAD_dataset/JAAD_clips/frames_with_bboxes'
+keypoints_dir = './JAAD_dataset/JAAD_clips/pose_keypoints'
+cache_dir = './JAAD_dataset/cache'
 base_dataset = JAADDataset(frames_dir, keypoints_dir, cache_dir, transform)
 
 # Split dataset into training and validation sets
@@ -84,16 +86,17 @@ train_set = Subset(base_dataset, train_indices)
 val_set = Subset(base_dataset, val_indices)
 
 
-# Directory per salvare i dati preprocessati
-train_save_dir = '/content/drive/My Drive/CV_Project/training_data'
-val_save_dir = '/content/drive/My Drive/CV_Project/validation_data'
+# Directories for saving preprocessed data
+train_save_dir = './training_data'
+val_save_dir = './validation_data'
 os.makedirs(train_save_dir, exist_ok=True)
 os.makedirs(val_save_dir, exist_ok=True)
 
 
 # Check if training data and validation data already exist
 if not os.listdir(train_save_dir) or not os.listdir(val_save_dir):
-    # Funzione per salvare i dati preprocessati
+    
+    # Function to save preprocessed data
     def save_preprocessed_data(dataset, save_dir):
         for idx in tqdm(range(len(dataset))):
             frame, keypoints, label, traffic_info, vehicle_info, appearance_info, attributes_info = dataset[idx]
@@ -108,14 +111,14 @@ if not os.listdir(train_save_dir) or not os.listdir(val_save_dir):
                 'attributes_info': attributes_info
             }, save_path)
 
-    # Salva i dati preprocessati
+    # Save the preprocessed data
     save_preprocessed_data(train_set, train_save_dir)
     save_preprocessed_data(val_set, val_save_dir)
 else:
   print("Training data and validation data already exist. Skipping preprocessing.")
 
 
-# Definisci il Dataset per caricare i dati preprocessati
+# Custom Dataset class for loading preprocessed data
 class PreprocessedDataset(Dataset):
     def __init__(self, data_dir, transform=None):
         self.data_dir = data_dir
@@ -140,7 +143,7 @@ class PreprocessedDataset(Dataset):
 
         return frame, keypoints, label, traffic_info, vehicle_info, appearance_info, attributes_info
 
-# Crea il dataset preprocessato per il training e la validazione
+# Create the dataset for training and validation
 train_dataset = PreprocessedDataset(train_save_dir, transform=None)
 val_dataset = PreprocessedDataset(val_save_dir, transform=None)
 
@@ -164,8 +167,8 @@ def collate_fn(batch):
 num_workers = min(16, cpu_count())
 
 # Check if DataLoader files already exist
-train_loader_path = '/content/drive/My Drive/CV_Project/train_loader.pkl'
-val_loader_path = '/content/drive/My Drive/CV_Project/val_loader.pkl'
+train_loader_path = './train_loader.pkl'
+val_loader_path = './val_loader.pkl'
 
 if not os.path.exists(train_loader_path) or not os.path.exists(val_loader_path):
     with tqdm(total=len(train_set), desc="Creating train DataLoader", unit="sample") as pbar:
@@ -179,13 +182,13 @@ if not os.path.exists(train_loader_path) or not os.path.exists(val_loader_path):
             pbar.update(128)
 
     # Save the DataLoader for later use
-    with open('/content/drive/My Drive/CV_Project/train_loader.pkl', 'wb') as f:
+    with open('./train_loader.pkl', 'wb') as f:
         pickle.dump(train_loader, f)
-    with open('/content/drive/My Drive/CV_Project/val_loader.pkl', 'wb') as f:
+    with open('./val_loader.pkl', 'wb') as f:
         pickle.dump(val_loader, f)
 
 else:
   print("DataLoader files already exist. Skipping DataLoader creation.")
 
 
-print("DataLoader created")
+print("Datasets and DataLoader created.")
