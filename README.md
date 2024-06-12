@@ -1,7 +1,6 @@
 # Pedestrian Crossing Prediction using CNN-LSTM Networks for Enhanced Autonomous Driving Safety
 
-![Alt text](https://github.com/GianmarcoDonnesi/ComputerVisionProject/blob/main/cover.jpg)
-
+<img src="![example.jpg](https://github.com/GianmarcoDonnesi/ComputerVisionProject/blob/main/cover.jpg)" alt="Example Image" width="500"/>
 
 ## Overview
 This project focuses on predicting pedestrian crossing behavior using the *JAAD 2.0* (Joint Attention for Autonomous Driving) dataset. The project pipeline involves extracting clips from the JAAD dataset, compute bounding boxes and extract keypoints from the images with *Mediapipe*, preprocessing annotations, creating datasets for training and evaluation, and training a deep learning model based on VGG19 and LSTM with attention mechanisms.
