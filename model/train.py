@@ -67,21 +67,21 @@ scheduler = StepLR(optimizer, step_size=5, gamma=0.1)
 criterion = nn.BCEWithLogitsLoss()
 
 train_dir = './training_data'
-train_dataset_pt = PreprocessedDataset(train_dir, transform=None)
+train_pt = PreprocessedDataset(train_dir, transform=None)
 
 # Load the pre-created DataLoader
 with open('./train_loader.pkl', 'rb') as f:
     train_loader_pkl = pickle.load(f)
 
 # Concatenate datasets
-combined_train_dataset = ConcatDataset([train_dataset_pt, train_loader_pkl.dataset])
+comb_train = ConcatDataset([train_pt, train_loader_pkl.dataset])
 
 # Create DataLoader for the concatenated dataset
-num_workers = min(16, cpu_count())
-combined_train_loader = DataLoader(combined_train_dataset, batch_size=32, shuffle=True, num_workers=num_workers, pin_memory=True, collate_fn=collate_fn)
+n_w = min(16, cpu_count())
+combined_train_loader = DataLoader(comb_train, batch_size = 32, shuffle = True, num_workers = n_w, pin_memory = True, collate_fn = collate_fn)
 
 # Train the model
-trained_model = train(model, combined_train_loader, optimizer, criterion, scheduler, num_epochs=10, device=device, verbose=True)
+trained_m = train(model, combined_train_loader, optimizer, criterion, scheduler, num_epochs=10, device=device, verbose=True)
 
 # Save the trained model
-torch.save(trained_model.state_dict(), './model/trained_model.pth')
+torch.save(trained_m.state_dict(), './model/trained_model.pth')

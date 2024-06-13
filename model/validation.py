@@ -9,7 +9,7 @@ from model import PedestrianCrossingPredictor
 from multiprocessing import cpu_count
 import numpy as np
 
-def validate(model, criterion, val_loader, ablation=None):
+def validation(model, criterion, val_loader, ablation=None):
     model.eval()
     val_running_loss = 0.0
     val_preds = []
@@ -48,3 +48,35 @@ def validate(model, criterion, val_loader, ablation=None):
     val_f1 = f1_score(val_targets, (np.array(val_preds) > 0.5).astype(int))
 
     return avg_val_loss, val_accuracy, val_recall, val_f1
+
+def evaluate_ablation(model, criterion, val_loader):
+    ablations = [None, 'traffic', 'vehicle', 'appearance', 'attributes']
+    results = []
+
+    for ablation in ablations:
+        print(f"Evaluating with ablation: {ablation if ablation else 'None'}")
+        avg_val_loss, accuracy, recall, f1 = validation(model, criterion, val_loader, ablation)
+        
+        result = {
+            'ablation': ablation if ablation else 'None',
+            'loss': avg_val_loss,
+            'accuracy': accuracy,
+            'recall': recall,
+            'f1_score': f1
+        }
+        results.append(result)
+        
+        print(f"Ablation: {result['ablation']}, Loss: {result['loss']:.4f}, Accuracy: {result['accuracy']:.4f}, Recall: {result['recall']:.4f}, F1 Score: {result['f1_score']:.4f}")
+    
+    return results
+
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+model = PedestrianCrossingPredictor()
+model.load_state_dict(torch.load('./model/trained_model.pth'))
+model.to(device)
+
+with open('./val_loader.pkl', 'rb') as f:
+    val_loader_pkl = pickle.load(f)
+
+val_dir = './validation_data'
