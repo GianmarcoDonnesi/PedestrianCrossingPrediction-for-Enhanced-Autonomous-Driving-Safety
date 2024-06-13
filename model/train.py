@@ -1,6 +1,14 @@
 import torch
+import torch.nn as nn
 from tqdm import tqdm
 from sklearn.metrics import accuracy_score, recall_score, f1_score
+import torch.optim as optim
+from torch.optim.lr_scheduler import StepLR
+from torch.utils.data import DataLoader, ConcatDataset
+import pickle
+from multiprocessing import cpu_count
+from model.model import PedestrianCrossingPredictor
+from create_dataset import PreprocessedDataset, collate_fn
 
 def train(model, train_loader, optimizer, criterion, scheduler=None, num_epochs=10, device='cuda', verbose=True):
     model.to(device)
@@ -12,7 +20,10 @@ def train(model, train_loader, optimizer, criterion, scheduler=None, num_epochs=
         target = []  # Targets
 
         for batch_idx, (frames, keypoints, label, traffic_info, vehicle_info, appearance_info, attributes_info) in enumerate(tqdm(train_loader, desc=f"Epoch {epoch+1}/{num_epochs}", unit="batch")):
-            frames, keypoints, label, traffic_info, vehicle_info, appearance_info, attributes_info = frames.to(device), keypoints.to(device), label.to(device), traffic_info.to(device), vehicle_info.to(device), appearance_info.to(device), attributes_info.to(device)
+            frames, keypoints, label, traffic_info, vehicle_info, appearance_info, attributes_info = (
+                frames.to(device), keypoints.to(device), label.to(device), traffic_info.to(device), 
+                vehicle_info.to(device), appearance_info.to(device), attributes_info.to(device)
+            )
             
             optimizer.zero_grad()  # Clear gradients
             output = model(frames, traffic_info, vehicle_info, appearance_info, attributes_info)  # Forward pass
@@ -43,3 +54,34 @@ def train(model, train_loader, optimizer, criterion, scheduler=None, num_epochs=
             scheduler.step()
 
     return model
+
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+# Initialize the model, optimizer, scheduler, and loss criterion
+model = PedestrianCrossingPredictor().to(device)
+model.load_state_dict(torch.load('./model/model.pth'))
+
+optimizer = optim.Adam(model.parameters(), lr=0.001)
+optimizer.load_state_dict(torch.load('./model/optimizer.pth'))
+scheduler = StepLR(optimizer, step_size=5, gamma=0.1)
+criterion = nn.BCEWithLogitsLoss()
+
+train_dir = './training_data'
+train_dataset_pt = PreprocessedDataset(train_dir, transform=None)
+
+# Load the pre-created DataLoader
+with open('./train_loader.pkl', 'rb') as f:
+    train_loader_pkl = pickle.load(f)
+
+# Concatenate datasets
+combined_train_dataset = ConcatDataset([train_dataset_pt, train_loader_pkl.dataset])
+
+# Create DataLoader for the concatenated dataset
+num_workers = min(16, cpu_count())
+combined_train_loader = DataLoader(combined_train_dataset, batch_size=32, shuffle=True, num_workers=num_workers, pin_memory=True, collate_fn=collate_fn)
+
+# Train the model
+trained_model = train(model, combined_train_loader, optimizer, criterion, scheduler, num_epochs=10, device=device, verbose=True)
+
+# Save the trained model
+torch.save(trained_model.state_dict(), './model/trained_model.pth')
