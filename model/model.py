@@ -31,9 +31,17 @@ class SoftAttention(nn.Module):
 class PedestrianCrossingPredictor(nn.Module):
     def __init__(self):
         super(PedestrianCrossingPredictor, self).__init__()
-      
+        vgg19 = models.vgg19(pretrained=True)
 
-       
+        # Extract VGG19 features
+        self.vgg19_features = vgg19.features
+        self.vgg19_avgpool = vgg19.avgpool
+        self.avgpool = nn.AdaptiveAvgPool2d((7, 7))
+        self.vgg19_classifier = nn.Sequential(*list(vgg19.classifier.children())[:-1])
+
+        # Freeze more layers of VGG19
+        for param in self.vgg19_features[:36].parameters():  
+            param.requires_grad = False
             
         # Define LSTM with input size of 4096 and hidden size of 256    
         self.lstm = nn.LSTM(input_size=4096, hidden_size=256, num_layers=1, batch_first=True)  
@@ -41,14 +49,38 @@ class PedestrianCrossingPredictor(nn.Module):
         # Attention module
         self.attention = SoftAttention(hidden_dim=256)
 
-      
+        # BatchNorm and Dropout
+        self.bn1 = nn.BatchNorm1d(256)
+        self.d1 = nn.Dropout(0.5)
+
+        self.fc1 = nn.Linear(256, 128)
+        self.bn2 = nn.BatchNorm1d(128)
+        self.d2 = nn.Dropout(0.5)
+
+        self.fc2 = nn.Linear(128, 64)
+        self.bn3 = nn.BatchNorm1d(64)
+        self.d3 = nn.Dropout(0.5)
 
         self.fc3 = nn.Linear(64, 1)
 
+        # Goal module
+        self.goal_module = nn.Sequential(
+            nn.Linear(256, 128),
+            nn.ReLU(),
+            nn.BatchNorm1d(128),
+            nn.Dropout(0.5),
+            nn.Linear(128, 256),
+            nn.ReLU()
+        )
         
-        
-        
-        
+        # Combined features layers
+        self.com_fc1 = nn.Linear(256 + 256 + 11, 256)  
+        self.com_bn1 = nn.BatchNorm1d(256)
+        self.com_d1 = nn.Dropout(0.5)
+        self.com_fc2 = nn.Linear(256, 128)
+        self.com_bn2 = nn.BatchNorm1d(128)
+        self.com_d2 = nn.Dropout(0.5)
+        self.com_fc3 = nn.Linear(128, 1)
 
     def forward(self, x, keypoints, traffic_info, vehicle_info, appearance_info, attributes_info, future_steps=10):
         if x.dim() == 4:  # If the input has 4 dimensions, expand it to 5
@@ -57,7 +89,9 @@ class PedestrianCrossingPredictor(nn.Module):
         c_in = x.view(batch_size * seq_len, c, h, w)
         c_out = self.vgg19_features(c_in)
         c_out = self.avgpool(c_out)
-        
+        c_out = c_out.view(c_out.size(0), -1)
+        c_out = self.vgg19_classifier(c_out)
+        c_out = c_out.view(batch_size, seq_len, -1)
 
         # Pass through LSTM
         lstm_out, _ = self.lstm(c_out)
@@ -79,15 +113,38 @@ class PedestrianCrossingPredictor(nn.Module):
 
         combined = torch.cat((context, goal_out, additional_info), dim=1)
 
-        
+        # Combine context, goal, and additional information
+        combined = self.com_fc1(combined)
+        combined = torch.relu(combined)
+        combined = self.com_bn1(combined)
+        combined = self.com_d1(combined)
+
+        combined = self.com_fc2(combined)
+        combined = torch.relu(combined)
+        combined = self.com_bn2(combined)
+        combined = self.com_d2(combined)
+
+        combined = self.com_fc3(combined)
 
         return combined
 
-
+# Initialize weights for the model
+def init_w(m):
+    if isinstance(m, nn.Linear):
+        nn.init.xavier_normal_(m.weight)
+        nn.init.constant_(m.bias, 0)
+    elif isinstance(m, nn.LSTM):
+        for name, param in m.named_parameters():
+            if 'weight_ih' in name:
+                nn.init.xavier_normal_(param.data)
+            elif 'weight_hh' in name:
+                nn.init.orthogonal_(param.data)
+            elif 'bias' in name:
+                nn.init.constant_(param.data, 0)
 
 
 model = PedestrianCrossingPredictor()
-
+model.apply(init_w)
 
 # Define loss function
 criterion = nn.BCEWithLogitsLoss()

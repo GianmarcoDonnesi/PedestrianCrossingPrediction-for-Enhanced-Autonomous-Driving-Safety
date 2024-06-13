@@ -13,7 +13,16 @@ pose_output_dir = os.path.join(jaad_path, 'pose_keypoints')
 os.makedirs(output_dir, exist_ok=True)
 os.makedirs(pose_output_dir, exist_ok=True)
 
+# Initialize Mediapipe Pose
+mp_pose = mp.solutions.pose
+pose = mp_pose.Pose(static_image_mode=False, model_complexity=2, enable_segmentation=False, min_detection_confidence=0.4)
 
+def draw_keypoints(image, keypoints):
+    for keypoint in keypoints:
+        x = int(keypoint[0] * image.shape[1])
+        y = int(keypoint[1] * image.shape[0])
+        cv2.circle(image, (x, y), 5, (0, 0, 255), -1)
+    return image
 
 
 def extract_and_save_frames_with_bboxes_and_pose_keypoints(video_path, annotation_path, video_output_dir, pose_output_dir):
@@ -60,7 +69,30 @@ def extract_and_save_frames_with_bboxes_and_pose_keypoints(video_path, annotatio
                     keypoints.append([landmark.x, landmark.y, landmark.z])
                 keypoints = np.array(keypoints)
                 # Disegna i keypoints sull'immagine
-                
+                frame_with_keypoints = draw_keypoints(frame, keypoints)
+                # Salva l'immagine con bounding boxes e keypoints
+                frame_filename = os.path.join(video_output_dir, f"{video_name}_frame_{frame_id:05d}.jpg")
+                cv2.imwrite(frame_filename, frame_with_keypoints)
+            else:
+                # Salva l'immagine solo con bounding boxes
+                frame_filename = os.path.join(video_output_dir, f"{video_name}_frame_{frame_id:05d}.jpg")
+                cv2.imwrite(frame_filename, frame)
+
+                # Create an empty array for keypoints
+                keypoints = np.empty((0, 3))
+
+            # Save keypoints as .npy file
+            keypoints_filename = os.path.join(pose_output_dir, f"{video_name}_frame_{frame_id:05d}.npy")
+            np.save(keypoints_filename, keypoints)
+
+            frame_id += 1
+            pbar.update(1)
+
+        cap.release()
+
+# Extract frames with bounding boxes and pose keypoints for the first 100 videos and annotation files
+video_files = sorted([file for file in os.listdir(jaad_path) if file.endswith('.mp4')])
+
 for video_file in video_files[:100]:
     video_path = os.path.join(jaad_path, video_file)
     annotation_file = video_file.replace('.mp4', '.xml')
