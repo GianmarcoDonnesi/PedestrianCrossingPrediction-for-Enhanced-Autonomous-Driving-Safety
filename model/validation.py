@@ -3,11 +3,11 @@ import torch.nn as nn
 import pickle
 from tqdm import tqdm
 from sklearn.metrics import accuracy_score, recall_score, f1_score
-from torch.utils.data import ConcatDataset, Subset
-from create_dataset import PreprocessedDataset, collate_fn
-from model import PedestrianCrossingPredictor
 from multiprocessing import cpu_count
 import numpy as np
+from torch.utils.data import DataLoader, ConcatDataset
+from create_dataset import PreprocessedDataset, collate_fn
+from model.model import PedestrianCrossingPredictor
 
 def validation(model, criterion, val_loader, ablation=None):
     model.eval()
@@ -70,13 +70,42 @@ def evaluate_ablation(model, criterion, val_loader):
     
     return results
 
+# Set the device to GPU if available, otherwise use CPU
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-model = PedestrianCrossingPredictor()
+# Initialize the model and load the trained weights
+model = PedestrianCrossingPredictor().to(device)
 model.load_state_dict(torch.load('./model/trained_model.pth'))
-model.to(device)
+criterion = nn.BCEWithLogitsLoss()
 
+# Load the DataLoader from a pickle file
 with open('./val_loader.pkl', 'rb') as f:
     val_loader_pkl = pickle.load(f)
 
+# Directory for validation data
 val_dir = './validation_data'
+# Load the preprocessed validation dataset from .pt files
+val_pt = PreprocessedDataset(val_dir, transform=None)
+
+# Create DataLoader for the .pt files
+n_w = min(16, cpu_count())
+validation_loader_pt = DataLoader(val_pt, batch_size = 32, shuffle = True, num_workers = n_w, pin_memory = True, collate_fn = collate_fn)
+
+# Concatenate the DataLoaders
+combined_val_dataset = ConcatDataset([val_pt, val_loader_pkl.dataset])
+combined_val_loader = DataLoader(combined_val_dataset, batch_size=32, shuffle=True, num_workers=num_workers, pin_memory=True, collate_fn=collate_fn)
+
+# Criterion for the loss function
+
+
+# Evaluate the model performance with and without ablation
+results = evaluate_ablation(model, criterion, combined_val_loader)
+
+# Print the results
+for result in results:
+    print(f"Ablation: {result['ablation']}")
+    print(f"Loss: {result['loss']:.4f}")
+    print(f"Accuracy: {result['accuracy']:.4f}")
+    print(f"Recall: {result['recall']:.4f}")
+    print(f"F1 Score: {result['f1_score']:.4f}")
+    print()
