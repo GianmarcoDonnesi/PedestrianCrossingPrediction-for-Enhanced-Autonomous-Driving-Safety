@@ -10,7 +10,9 @@ from multiprocessing import cpu_count
 from model.model import PedestrianCrossingPredictor
 from create_dataset import PreprocessedDataset, collate_fn
 
-def train(model, train_loader, optimizer, criterion, scheduler=None, num_epochs=10, device='cuda', verbose=True):
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+def train(model, train_loader, optimizer, criterion, scheduler = None, num_epochs = 10, device = 'cuda', verbose = True):
     model.to(device)
     
     for epoch in range(num_epochs):
@@ -55,8 +57,6 @@ def train(model, train_loader, optimizer, criterion, scheduler=None, num_epochs=
 
     return model
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
 # Initialize the model, optimizer, scheduler, and loss criterion
 model = PedestrianCrossingPredictor().to(device)
 model.load_state_dict(torch.load('./model/model.pth'))
@@ -78,10 +78,10 @@ comb_train = ConcatDataset([train_pt, train_loader_pkl.dataset])
 
 # Create DataLoader for the concatenated dataset
 n_w = min(16, cpu_count())
-combined_train_loader = DataLoader(comb_train, batch_size = 32, shuffle = True, num_workers = n_w, pin_memory = True, collate_fn = collate_fn)
+comb_train_loader = DataLoader(comb_train, batch_size = 32, shuffle = True, num_workers = n_w, pin_memory = True, collate_fn = collate_fn)
 
 # Train the model
-trained_m = train(model, combined_train_loader, optimizer, criterion, scheduler, num_epochs=10, device=device, verbose=True)
+trained_m = train(model, comb_train_loader, optimizer, criterion, scheduler, num_epochs = 10, device = device, verbose = True)
 
 # Save the trained model
 torch.save(trained_m.state_dict(), './model/trained_model.pth')
