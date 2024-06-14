@@ -12,3 +12,11 @@ results_df = pd.DataFrame(results)
 
 # Set up the matplotlib figure
 plt.figure(figsize = (15, 5))
+
+# Plot Accuracy
+plt.subplot(1, 3, 1)
+sns.barplot(data=results_df, x = 'ablation', y = 'accuracy')
+plt.title('Validation Accuracy')
+plt.ylim(0, 1)
+plt.ylabel('Accuracy')
+plt.xlabel('Ablation')
