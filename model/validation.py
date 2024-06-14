@@ -8,6 +8,7 @@ import numpy as np
 from torch.utils.data import DataLoader, ConcatDataset
 from create_dataset import PreprocessedDataset, collate_fn
 from model.model import PedestrianCrossingPredictor
+from torch.cuda.amp import autocast
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -19,7 +20,10 @@ def validation(model, criterion, val_loader, ablation = None):
 
     with torch.no_grad():
         for frames, keypoints, labels, traffic_info, vehicle_info, appearance_info, attributes_info in tqdm(val_loader, desc="Validating", unit="batch"):
-            frames, keypoints, traffic_info, vehicle_info, appearance_info, attributes_info, labels = (frames.to(device), keypoints.to(device), traffic_info.to(device), vehicle_info.to(device), appearance_info.to(device), attributes_info.to(device), labels.to(device))
+            frames, keypoints, traffic_info, vehicle_info, appearance_info, attributes_info, labels = (
+                frames.to(device), keypoints.to(device), traffic_info.to(device), vehicle_info.to(device), 
+                appearance_info.to(device), attributes_info.to(device), labels.to(device)
+            )
 
             # Ablation
             if ablation == 'traffic':
@@ -31,24 +35,21 @@ def validation(model, criterion, val_loader, ablation = None):
             elif ablation == 'attributes':
                 attributes_info = torch.zeros_like(attributes_info)
 
-            # Forward pass
-            outputs = model(frames, keypoints, traffic_info, vehicle_info, appearance_info, attributes_info)
-            labels = labels.unsqueeze(1).float()
-            loss = criterion(outputs, labels)
-            val_running_loss += loss.item()
-
-            # Predictions and targets
+            with autocast():
+                outputs = model(frames, keypoints, traffic_info, vehicle_info, appearance_info, attributes_info)
+                labels = labels.unsqueeze(1).float()
+                loss = criterion(outputs, labels)
+            
+            val_running_loss += loss.item() * frames.size(0)
             preds = torch.sigmoid(outputs).cpu().numpy()
             val_preds.extend(preds)
             val_targets.extend(labels.cpu().numpy())
 
-            torch.cuda.empty_cache()
-
-    # Average validation loss and metrics
-    avg_val_loss = val_running_loss / len(val_loader)
-    val_accuracy = accuracy_score(val_targets, (np.array(val_preds) > 0.5).astype(int))
-    val_recall = recall_score(val_targets, (np.array(val_preds) > 0.5).astype(int))
-    val_f1 = f1_score(val_targets, (np.array(val_preds) > 0.5).astype(int))
+    avg_val_loss = val_running_loss / len(val_loader.dataset)
+    val_preds = (np.array(val_preds) > 0.5).astype(int)
+    val_accuracy = accuracy_score(val_targets, val_preds)
+    val_recall = recall_score(val_targets, val_preds)
+    val_f1 = f1_score(val_targets, val_preds)
 
     return avg_val_loss, val_accuracy, val_recall, val_f1
 
@@ -85,7 +86,7 @@ with open('./val_loader.pkl', 'rb') as f:
 val_dir = './validation_data'
 
 # Load the preprocessed validation dataset
-val_pt = PreprocessedDataset(val_dir, transform=None)
+val_pt = PreprocessedDataset(val_dir, transform = None)
 
 # Create DataLoader
 n_w = min(16, cpu_count())

@@ -9,11 +9,13 @@ import pickle
 from multiprocessing import cpu_count
 from model.model import PedestrianCrossingPredictor
 from create_dataset import PreprocessedDataset, collate_fn
+from torch.cuda.amp import autocast, GradScaler
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 def train(model, train_loader, optimizer, criterion, scheduler = None, num_epochs = 10, device = 'cuda', verbose = True):
     model.to(device)
+    scaler = GradScaler()  # Mixed precision scaler
     
     for epoch in range(num_epochs):
         model.train()
@@ -27,11 +29,14 @@ def train(model, train_loader, optimizer, criterion, scheduler = None, num_epoch
                 vehicle_info.to(device), appearance_info.to(device), attributes_info.to(device)
             )
             
-            optimizer.zero_grad()  # Clear gradients
-            output = model(frames, traffic_info, vehicle_info, appearance_info, attributes_info)  # Forward pass
-            loss = criterion(output, label.float().view(-1, 1))  # Compute loss
-            loss.backward()  # Backward pass
-            optimizer.step()  # Update parameters
+            optimizer.zero_grad() # Clear gradients
+            with autocast():  # Mixed precision context
+                output = model(frames, keypoints, traffic_info, vehicle_info, appearance_info, attributes_info)
+                loss = criterion(output, label.float().view(-1, 1))
+
+            scaler.scale(loss).backward()
+            scaler.step(optimizer)
+            scaler.update()
 
             running_loss += loss.item() * frames.size(0)
             pred_label = torch.sigmoid(output) > 0.5
