@@ -28,3 +28,14 @@ plt.title('Validation Recall')
 plt.ylim(0, 1)
 plt.ylabel('Recall')
 plt.xlabel('Ablation')
+
+# Plot F1 Score
+plt.subplot(1, 3, 3)
+sns.barplot(data = results_df, x = 'ablation', y = 'f1_score')
+plt.title('Validation F1 Score')
+plt.ylim(0, 1)
+plt.ylabel('F1 Score')
+plt.xlabel('Ablation')
+
+plt.tight_layout()
+plt.show()
