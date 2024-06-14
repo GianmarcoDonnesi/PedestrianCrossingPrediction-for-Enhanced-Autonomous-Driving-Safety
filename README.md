@@ -38,16 +38,20 @@ Run the script `bboxes_and_posekeypoints.py` to generate bounding boxes and pose
 Run the scritp `preprocess_annotations.py` to preprocess the raw annotations transforming them into a structured format suitable for training and evaluation.
 
 ### Step 4: Create Dataset
-Run the scritp `create_dataset.py` to prepare the dataset for training and evaluation by combining frames, keypoints, and annotations.
+Run the script `create_dataset.py` to prepare the dataset for training and evaluation by combining frames, keypoints, and annotations.
 
 ### Step 5: Model Definition
-The `model.py` script contains the definition of the model used for prediction. <br>
+The `model/model.py` script contains the definition of the model used for prediction. <br>
 This script defines the `PedestrianCrossingPredictor` model, which uses a combination of *VGG19* for feature extraction and *LSTM* with attention mechanisms for sequence modeling.
 
-### Step 6: Train and Evaluate the model
-Run the script `train_model.py` to train the model and save the state in the *trained_model.pth* file. <br>
-In the end use the script `evaluate_model.py` to evaluates the performance of the trained model on the validation dataset. It includes functionality for ablation studies to assess the impact of different types of input features on the model's performance.
+### Step 6: Train and Validate the model
+Run the script `model/train.py` to load the data, train the model for crosswalk prediction and finally save trained model for future use in the *trained_model.pth* file. <br>
+Now you can use the script `model/validation.py` to evaluate the performance of the trained model on the validation dataset, an ablation analysis is also performed to understand the importance of different input features.
 
+### Step 7: Model results and graphs
+Run the script `model/graphs.py` to see graphs showing how different ablations affect the model's Accuracy, Recall and F1 Score. <br>
+From these we understand the importance of different input features in predicting pedestrian crossings. <br>
+The three graphs show for each type of ablation: Accuracy, Recall and F1 Score.
 
 ### Technologies and Tools Used
 
