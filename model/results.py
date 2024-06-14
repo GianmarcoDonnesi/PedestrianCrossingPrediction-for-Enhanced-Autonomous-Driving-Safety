@@ -20,3 +20,11 @@ plt.title('Validation Accuracy')
 plt.ylim(0, 1)
 plt.ylabel('Accuracy')
 plt.xlabel('Ablation')
+
+# Plot Recall
+plt.subplot(1, 3, 2)
+sns.barplot(data = results_df, x = 'ablation', y = 'recall')
+plt.title('Validation Recall')
+plt.ylim(0, 1)
+plt.ylabel('Recall')
+plt.xlabel('Ablation')
