@@ -20,10 +20,7 @@ def validation(model, criterion, val_loader, ablation = None):
 
     with torch.no_grad():
         for frames, keypoints, labels, traffic_info, vehicle_info, appearance_info, attributes_info in tqdm(val_loader, desc="Validating", unit="batch"):
-            frames, keypoints, traffic_info, vehicle_info, appearance_info, attributes_info, labels = (
-                frames.to(device), keypoints.to(device), traffic_info.to(device), vehicle_info.to(device), 
-                appearance_info.to(device), attributes_info.to(device), labels.to(device)
-            )
+            frames, keypoints, traffic_info, vehicle_info, appearance_info, attributes_info, labels = (frames.to(device), keypoints.to(device), traffic_info.to(device), vehicle_info.to(device), appearance_info.to(device), attributes_info.to(device), labels.to(device))
 
             # Ablation
             if ablation == 'traffic':
@@ -86,18 +83,22 @@ with open('./val_loader.pkl', 'rb') as f:
 val_dir = './validation_data'
 
 # Load the preprocessed validation dataset
-val_pt = PreprocessedDataset(val_dir, transform = None)
+val_pt = PreprocessedDataset(val_dir, transform=None)
 
 # Create DataLoader
 n_w = min(16, cpu_count())
-validation_loader_pt = DataLoader(val_pt, batch_size = 32, shuffle = True, num_workers = n_w, pin_memory = True, collate_fn = collate_fn)
+validation_loader_pt = DataLoader(val_pt, batch_size=32, shuffle=True, num_workers=n_w, pin_memory=True, collate_fn=collate_fn)
 
 # Concatenate the DataLoaders
 comb_val = ConcatDataset([val_pt, val_loader_pkl.dataset])
-comb_val_loader = DataLoader(comb_val, batch_size = 32, shuffle = True, num_workers = n_w, pin_memory = True, collate_fn = collate_fn)
+comb_val_loader = DataLoader(comb_val, batch_size=32, shuffle=True, num_workers=n_w, pin_memory=True, collate_fn=collate_fn)
 
 # Evaluate the model performance with and without ablation
 results = ablation(model, criterion, comb_val_loader)
+
+# Save results for visualization
+with open('./results.pkl', 'wb') as f:
+    pickle.dump(results, f)
 
 for result in results:
     print(f"Ablation: {result['ablation']}")
