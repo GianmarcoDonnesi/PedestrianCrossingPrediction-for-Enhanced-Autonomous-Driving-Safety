@@ -1,4 +1,3 @@
-# vgg19_and_lstm.py
 import torch
 import torch.nn as nn
 import torchvision.models as models
