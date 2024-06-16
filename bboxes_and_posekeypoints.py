@@ -68,13 +68,13 @@ def extract_and_save_frames_with_bboxes_and_pose_keypoints(video_path, annotatio
                 for landmark in r.pose_landmarks.landmark:
                     keypoints.append([landmark.x, landmark.y, landmark.z])
                 keypoints = np.array(keypoints)
-                # Disegna i keypoints sull'immagine
+                # Draw keypoints on the image
                 frame_with_keypoints = draw_keypoints(frame, keypoints)
-                # Salva l'immagine con bounding boxes e keypoints
+                # Save the image with bounding boxes and keypoints
                 frame_filename = os.path.join(video_output_dir, f"{video_name}_frame_{frame_id:05d}.jpg")
                 cv2.imwrite(frame_filename, frame_with_keypoints)
             else:
-                # Salva l'immagine solo con bounding boxes
+                # Save image with bounding boxes only
                 frame_filename = os.path.join(video_output_dir, f"{video_name}_frame_{frame_id:05d}.jpg")
                 cv2.imwrite(frame_filename, frame)
 
