@@ -44,9 +44,9 @@ Run the script `create_dataset.py` to prepare the dataset for training and evalu
 The `model/model.py` script contains the definition of the model used for prediction. <br>
 This script defines the `PedestrianCrossingPredictor` model, which uses a combination of *VGG19* for feature extraction and *LSTM* with attention mechanisms for sequence modeling.
 
-### Step 6: Train and Validate the model
+### Step 6: Training and Testing the model
 Run the script `model/train.py` to load the data, train the model for crosswalk prediction and finally save trained model for future use in the *trained_model.pth* file. <br>
-Now you can use the script `model/validation.py` to evaluate the performance of the trained model on the validation dataset, an ablation analysis is also performed to understand the importance of different input features.
+Now you can use the script `model/test.py` to evaluate the performance of the trained model on the test dataset, an ablation analysis is also performed to understand the importance of different input features.
 
 ### Step 7: Model results and graphs
 Run the script `model/graphs.py` to see graphs showing how different ablations affect the model's Accuracy, Recall and F1 Score. <br>

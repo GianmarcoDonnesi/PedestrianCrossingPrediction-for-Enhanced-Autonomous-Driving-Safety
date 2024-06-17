@@ -79,22 +79,22 @@ keypoints_dir = './JAAD_dataset/JAAD_clips/pose_keypoints'
 cache_dir = './JAAD_dataset/cache'
 base_dataset = JAADDataset(frames_dir, keypoints_dir, cache_dir, transform)
 
-# Split dataset into training and validation sets
-train_indices, val_indices = train_test_split(list(range(len(base_dataset))), test_size=0.2, random_state=42)
+# Split dataset into training and test sets
+train_indices, test_indices = train_test_split(list(range(len(base_dataset))), test_size=0.2, random_state=42)
 
 train_set = Subset(base_dataset, train_indices)
-val_set = Subset(base_dataset, val_indices)
+test_set = Subset(base_dataset, test_indices)
 
 
 # Directories for saving preprocessed data
 train_save_dir = './training_data'
-val_save_dir = './validation_data'
+test_save_dir = './test_data'
 os.makedirs(train_save_dir, exist_ok=True)
-os.makedirs(val_save_dir, exist_ok=True)
+os.makedirs(test_save_dir, exist_ok=True)
 
 
-# Check if training data and validation data already exist
-if not os.listdir(train_save_dir) or not os.listdir(val_save_dir):
+# Check if training data and test data already exist
+if not os.listdir(train_save_dir) or not os.listdir(test_save_dir):
     
     # Function to save preprocessed data
     def save_preprocessed_data(dataset, save_dir):
@@ -113,9 +113,9 @@ if not os.listdir(train_save_dir) or not os.listdir(val_save_dir):
 
     # Save the preprocessed data
     save_preprocessed_data(train_set, train_save_dir)
-    save_preprocessed_data(val_set, val_save_dir)
+    save_preprocessed_data(test_set, test_save_dir)
 else:
-  print("Training data and validation data already exist. Skipping preprocessing.")
+  print("Training data and testing data already exist. Skipping preprocessing.")
 
 
 # Custom Dataset class for loading preprocessed data
@@ -143,9 +143,9 @@ class PreprocessedDataset(Dataset):
 
         return frame, keypoints, label, traffic_info, vehicle_info, appearance_info, attributes_info
 
-# Create the dataset for training and validation
+# Create the dataset for training and test
 train_dataset = PreprocessedDataset(train_save_dir, transform=None)
-val_dataset = PreprocessedDataset(val_save_dir, transform=None)
+test_dataset = PreprocessedDataset(test_save_dir, transform=None)
 
 
 # Custom collate function to handle batches with different tensor sizes
@@ -168,24 +168,24 @@ num_workers = min(16, cpu_count())
 
 # Check if DataLoader files already exist
 train_loader_path = './train_loader.pkl'
-val_loader_path = './val_loader.pkl'
+test_loader_path = './test_loader.pkl'
 
-if not os.path.exists(train_loader_path) or not os.path.exists(val_loader_path):
+if not os.path.exists(train_loader_path) or not os.path.exists(test_loader_path):
     with tqdm(total=len(train_set), desc="Creating train DataLoader", unit="sample") as pbar:
         train_loader = DataLoader(train_dataset, batch_size=128, shuffle=True, num_workers=num_workers, pin_memory=True, collate_fn=collate_fn)
         for _ in train_loader:
             pbar.update(128)
 
-    with tqdm(total=len(val_set), desc="Creating val DataLoader", unit="sample") as pbar:
-        val_loader = DataLoader(val_dataset, batch_size=128, shuffle=False, num_workers=num_workers, pin_memory=True, collate_fn=collate_fn)
-        for _ in val_loader:
+    with tqdm(total=len(test_set), desc="Creating test DataLoader", unit="sample") as pbar:
+        test_loader = DataLoader(test_dataset, batch_size=128, shuffle=False, num_workers=num_workers, pin_memory=True, collate_fn=collate_fn)
+        for _ in test_loader:
             pbar.update(128)
 
     # Save the DataLoader for later use
     with open('./train_loader.pkl', 'wb') as f:
         pickle.dump(train_loader, f)
-    with open('./val_loader.pkl', 'wb') as f:
-        pickle.dump(val_loader, f)
+    with open('./test_loader.pkl', 'wb') as f:
+        pickle.dump(test_loader, f)
 
 else:
   print("DataLoader files already exist. Skipping DataLoader creation.")
