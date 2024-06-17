@@ -35,7 +35,7 @@ Run the script `extractJAAD_clips.py` to extract clips from the JAAD dataset.
 Run the script `bboxes_and_posekeypoints.py` to generate bounding boxes and pose keypoints for each frame in the video clips. It uses computer vision techniques, like *Mediapipe*, to detect and annotate pedestrian positions and movements.
 
 ### Step 3: Preprocess Annotations
-Run the scritp `preprocess_annotations.py` to preprocess the raw annotations transforming them into a structured format suitable for training and evaluation.
+Run the scritp `preprocess_annotations.py` to preprocess the raw annotations, transforming them into a structured format suitable for training and evaluation.
 
 ### Step 4: Create Dataset
 Run the script `create_dataset.py` to prepare the dataset for training and evaluation by combining frames, keypoints, and annotations.
